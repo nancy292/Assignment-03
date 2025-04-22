@@ -1,0 +1,589 @@
+{% extends "index.html" %}
+
+{% block content %}
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+
+
+
+    .logo {
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .container {
+        max-width: 975px;
+        margin: 0 auto;
+        display: flex;
+        padding: 20px;
+    }
+
+    .feed {
+        flex: 2;
+        margin-right: 28px;
+    }
+
+    .sidebar {
+        flex: 1;
+        position: sticky;
+        top: 80px;
+        height: fit-content;
+    }
+
+    .post {
+        background-color: white;
+        border: 1px solid #dbdbdb;
+        border-radius: 3px;
+        margin-bottom: 24px;
+    }
+
+    .post-header {
+        display: flex;
+        align-items: center;
+        padding: 14px 16px;
+        border-bottom: 1px solid #efefef;
+    }
+
+    .post-header img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-right: 10px;
+        object-fit: cover;
+    }
+
+    .post-header .username {
+        font-weight: 600;
+        color: #262626;
+        text-decoration: none;
+    }
+
+    .post-image {
+        width: 100%;
+        max-height: 600px;
+        object-fit: cover;
+    }
+
+    .post-content {
+        padding: 12px 16px;
+    }
+
+    .post-description {
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .post-description .username {
+        font-weight: 600;
+        margin-right: 5px;
+    }
+
+    .comments-section {
+        margin-top: 8px;
+        border-top: 1px solid #efefef;
+        padding-top: 8px;
+    }
+
+    .comment {
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .comment .username {
+        font-weight: 600;
+        margin-right: 5px;
+    }
+
+    .show-more-comments {
+        color: #8e8e8e;
+        cursor: pointer;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .add-comment {
+        display: flex;
+        border-top: 1px solid #efefef;
+        padding: 16px;
+    }
+
+    .add-comment input {
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 14px;
+    }
+
+    .add-comment button {
+        background: none;
+        border: none;
+        color: #0095f6;
+        font-weight: 600;
+        cursor: pointer;
+        opacity: 0.3;
+    }
+
+    .add-comment button.active {
+        opacity: 1;
+    }
+
+    .char-count {
+        font-size: 12px;
+        color: #8e8e8e;
+        margin-right: 10px;
+    }
+
+    .user-profile {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .user-profile img {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        margin-right: 12px;
+        object-fit: cover;
+    }
+
+    .user-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-info .username {
+        font-weight: 600;
+        color: #262626;
+    }
+
+    .user-info .name {
+        color: #8e8e8e;
+        font-size: 14px;
+    }
+
+    .suggestions-title {
+        color: #8e8e8e;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+
+    @media (max-width: 975px) {
+        .container {
+            flex-direction: column;
+        }
+
+        .feed {
+            margin-right: 0;
+        }
+
+        .sidebar {
+            display: none;
+        }
+    }
+
+
+    .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #0095f6;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+
+<body>
+
+
+    <div class="container">
+
+        <div class=" feed" id="feed">
+            <main class="posts-container">
+                <div id="status-spinner" class="loading-indicator">
+                    <div class="spinner"></div>
+                </div>
+                <div id="no-posts-message" class="no-posts-message hidden">
+                    Loading
+                </div>
+
+                <div class="posts-grid" id="posts-grid">
+                    <!-- Posts will be dynamically added here -->
+                </div>
+            </main>
+            <!-- Posts will be loaded here -->
+        </div>
+
+
+        <div id="nopostsdata" style="display: none;">
+            No posts available
+        </div>
+        <div class="sidebar">
+
+            <div class="user-profile" id="user-profile">
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let userDetails = null;
+        let userEmail = null;
+        let currentUser = {
+            id: 'current-user',
+            username: 'current_user',
+            fullName: 'Current User',
+            profileImage: 'https://via.placeholder.com/150'
+        };
+
+        let posts = [];
+        function parseJWT(jwtToken) {
+            try {
+                const base64Payload = jwtToken.split('.')[1];
+                return JSON.parse(atob(base64Payload));
+            } catch (err) {
+                console.error('Error parsing JWT:', err);
+                return {};
+            }
+        }
+
+        function extractTokenFromCookies(cookies) {
+            return cookies
+                .split(';')
+                .map(cookie => cookie.trim().split('='))
+                .find(([key]) => key === 'token')?.[1] || "";
+        }
+
+        async function initApp() {
+            const authToken = extractTokenFromCookies(document.cookie);
+            if (!authToken) {
+                window.location.href = "/";
+                return;
+            }
+
+            const tokenData = parseJWT(authToken);
+            userEmail = tokenData.email || tokenData.sub || '';
+
+            if (!userEmail) {
+                console.error('No user email found in token');
+                window.location.href = "/";
+                return;
+            }
+
+            await fetchUserDetails();
+
+            await fetchPosts();
+
+        }
+
+        async function fetchUserDetails() {
+            try {
+                const userDetailsResponse = await fetch("/getUser", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ Username: userEmail })
+                });
+
+                if (userDetailsResponse.status === 200) {
+                    const userDetailsJson = await userDetailsResponse.json();
+                    userDetails = userDetailsJson.user;
+                    renderUserProfile(userDetails);
+                } else {
+                    console.error('Failed to fetch user details');
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+            }
+        }
+
+        async function fetchPosts() {
+            try {
+                const timelinePostsDataResponse = await fetch("/postsofallusers", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ email: userEmail })
+                })
+                posts = await timelinePostsDataResponse.json();
+
+
+
+                if (posts.length === 0) {
+                    console.log("inside posts if");
+                    document.getElementById('nopostsdata').style.display = 'block';
+                }
+
+                console.log("posts in timeline ", posts)
+                renderPosts(posts);
+
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            }
+        }
+
+
+
+
+
+        function renderUserProfile(user) {
+            console.log("user ", user)
+            const userProfileElement = document.getElementById('user-profile');
+            userProfileElement.innerHTML = `
+                <img src="https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3407.jpg" alt="${user.Username}">
+                <div class="user-info">
+                    <span class="username">${user.Username}</span>
+                    <span class="name">${user.full_name}</span>
+                </div>
+            `;
+        }
+
+        async function renderPosts(posts) {
+            const feedElement = document.getElementById('feed');
+
+            const sortedPosts = [...posts].sort((a, b) =>
+                new Date(b.timestamp) - new Date(a.timestamp)
+            );
+
+
+
+
+            const postElements = await Promise.all(sortedPosts.map(async (post, index) => {
+                const formData = new FormData();
+                formData.append('filename', post.filename);
+
+                let imageUrl = '';
+                try {
+                    const response = await fetch('/download-file', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        console.error('Failed to fetch image for post', post.filename);
+                        imageUrl = '';
+                    } else {
+                        const blob = await response.blob();
+                        imageUrl = URL.createObjectURL(blob);
+                    }
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                    imageUrl = '';
+                }
+
+                const sortedComments = [...(post.comments || [])].sort((a, b) =>
+                    new Date(b.time) - new Date(a.time)
+                );
+
+                const visibleComments = sortedComments.slice(0, 5);
+                const hiddenComments = sortedComments.slice(5);
+                console.log("hidden comments ", hiddenComments)
+                const visibleCommentsHTML = visibleComments.map(comment => `
+            <div class="comment">
+                <span class="username">${comment.username}</span>
+                <span>${comment.comment}</span>
+            </div>
+        `).join('');
+
+                const hiddenCommentsHTML = hiddenComments.map(comment => `
+            <div class="comment hidden-comment" style="display: none;">
+                <span class="username">${comment.username}</span>
+                <span>${comment.comment}</span>
+            </div>
+        `).join('');
+
+                const showMoreButton = hiddenComments.length > 0
+                    ? `<div class="show-more-comments" data-post-id="${post.post_id}">View all ${post.comments.length} comments</div>`
+                    : '';
+
+                return `
+            <div class="post" id="post-${post.post_id}">
+                <div class="post-header">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIf4R5qPKHPNMyAqV-FjS_OTBB8pfUV29Phg&s" alt="${post.Username}">
+                    <a href="#" class="username">${post.Username}</a>
+                </div>
+                <img src="${imageUrl || ''}" alt="Post image" class="post-image">
+                <div class="post-content">
+                    <div class="post-description">
+                        <span class="username">${post.Username}</span>
+                        <span>${post.description}</span>
+                    </div>
+                    <div class="comments-section" id="comments-${post.post_id}">
+                        ${showMoreButton}
+                        ${visibleCommentsHTML}
+                        ${hiddenCommentsHTML}
+                    </div>
+                </div>
+                <div class="add-comment">
+                    <input type="text" placeholder="Add a comment..." maxlength="200" data-post-id="${post.post_id}">
+                    <span class="char-count">0/200</span>
+                    <button disabled>Post</button>
+                </div>
+            </div>
+        `;
+            }));
+
+            feedElement.innerHTML = postElements.join('');
+            if (sortedPosts.length)
+                addEventListeners();
+        }
+
+
+
+        function addEventListeners() {
+            document.querySelectorAll('.show-more-comments').forEach(button => {
+                button.addEventListener('click', function () {
+                    const postId = this.getAttribute('data-post-id');
+                    const commentsSection = document.querySelector(`#comments-${postId}`);
+                    const hiddenComments = commentsSection.querySelectorAll('.hidden-comment');
+
+                    hiddenComments.forEach(comment => {
+                        comment.style.display = 'block';
+                    });
+
+                    this.style.display = 'none';
+                });
+            });
+
+            document.querySelectorAll('.add-comment input').forEach(input => {
+                input.addEventListener('input', function () {
+                    const charCount = this.value.length;
+                    const charCountElement = this.parentElement.querySelector('.char-count');
+                    const postButton = this.parentElement.querySelector('button');
+
+                    charCountElement.textContent = `${charCount}/200`;
+
+                    if (charCount > 0 && charCount <= 200) {
+                        postButton.disabled = false;
+                        postButton.classList.add('active');
+                    } else {
+                        postButton.disabled = true;
+                        postButton.classList.remove('active');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.add-comment button').forEach(button => {
+                button.addEventListener('click', function () {
+                    const commentInput = this.parentElement.querySelector('input');
+                    const postId = commentInput.getAttribute('data-post-id');
+                    const commentText = commentInput.value.trim();
+
+                    if (commentText && commentText.length <= 200) {
+                        console.log("inside comment text")
+                        addComment(postId, commentText);
+                        commentInput.value = '';
+                        this.disabled = true;
+                        this.classList.remove('active');
+                        this.parentElement.querySelector('.char-count').textContent = '0/200';
+                    }
+                });
+            });
+        }
+
+        async function addComment(postId, commentText) {
+            console.log("posts ", posts, postId)
+            const post = posts.find(p => p.post_id == postId);
+            console.log("inside add comment")
+            if (post) {
+
+                console.log("post id ", postId, userDetails, commentText)
+                const comment = {
+                    activePostId: postId,
+                    email: userDetails.email,
+                    comment: commentText,
+                    timestamp: new Date().toISOString(),
+                    username: userDetails.Username
+                };
+
+                console.log("nre ommcnet ", comment)
+
+                post.comments.unshift(comment);
+
+                const commentsSection = document.querySelector(`#comments-${postId}`);
+
+                const sortedComments = [...post.comments].sort((a, b) =>
+                    new Date(b.timestamp) - new Date(a.timestamp)
+                );
+
+                const visibleComments = sortedComments.slice(0, 5);
+                const hiddenComments = sortedComments.slice(5);
+
+                const visibleCommentsHTML = visibleComments.map(comment => `
+                    <div class="comment">
+                        <span class="username">${userDetails.Username}</span>
+                        <span>${comment.comment}</span>
+                    </div>
+                `).join('');
+
+                const hiddenCommentsHTML = hiddenComments.map(comment => `
+                    <div class="comment hidden-comment" style="display: none;">
+                        <span class="username">${comment.username}</span>
+                        <span>${comment.comment}</span>
+                    </div>
+                `).join('');
+
+                const showMoreButton = hiddenComments.length > 0
+                    ? `<div class="show-more-comments" data-post-id="${post.post_id}">View all ${post.comments.length} comments</div>`
+                    : '';
+
+                commentsSection.innerHTML = `
+                    ${showMoreButton}
+                    ${visibleCommentsHTML}
+                    ${hiddenCommentsHTML}
+                `;
+
+                document.querySelectorAll(`#comments-${postId} .show-more-comments`).forEach(button => {
+                    button.addEventListener('click', function () {
+                        const postId = this.getAttribute('data-post-id');
+                        const commentsSection = document.querySelector(`#comments-${postId}`);
+                        const hiddenComments = commentsSection.querySelectorAll('.hidden-comment');
+
+                        hiddenComments.forEach(comment => {
+                            comment.style.display = 'block';
+                        });
+
+                        this.style.display = 'none';
+                    });
+                });
+
+
+                await fetch('/commentAPost',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-type': "application/json" },
+                        body: JSON.stringify({ comment: comment })
+                    });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            initApp()
+        });
+    </script>
+</body>
+
+{% endblock %}
