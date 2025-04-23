@@ -1,0 +1,995 @@
+{% extends "index.html" %}
+
+{% block content %}
+<style>
+    /* Reset and base styles */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: #fafafa;
+        color: #262626;
+        line-height: 1.5;
+    }
+
+    .container {
+        max-width: 935px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Profile Header */
+    .profile-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 0;
+        border-bottom: 1px solid #dbdbdb;
+        margin-bottom: 20px;
+    }
+
+    .profile-image {
+        width: 150px;
+        height: 150px;
+        margin-bottom: 20px;
+    }
+
+    .profile-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid #fff;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-info {
+        text-align: center;
+    }
+
+    .username {
+        font-size: 28px;
+        font-weight: 300;
+        margin-bottom: 5px;
+    }
+
+    .full-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .bio {
+        font-size: 14px;
+        margin-bottom: 20px;
+        max-width: 400px;
+    }
+
+    .counters {
+        display: flex;
+        justify-content: space-around;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .counter {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: #262626;
+    }
+
+    .count {
+        font-weight: 600;
+        font-size: 18px;
+    }
+
+    .label {
+        color: #8e8e8e;
+        font-size: 14px;
+    }
+
+    /* Actions */
+    .actions {
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .create-post-btn {
+        background-color: #0095f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .create-post-btn:hover {
+        background-color: #0085e0;
+    }
+
+    /* Posts Grid */
+    .posts-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+    }
+
+    .post-card {
+        position: relative;
+        aspect-ratio: 1/1;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .post-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s;
+    }
+
+    .post-card:hover .post-image {
+        transform: scale(1.03);
+    }
+
+    .post-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(1, 0, 0, 1));
+        color: white;
+        padding: 10px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .post-card:hover .post-caption {
+        opacity: 1;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        overflow: auto;
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        animation: modalFadeIn 0.3s;
+    }
+
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #dbdbdb;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .close-modal {
+        cursor: pointer;
+        font-size: 24px;
+        color: #8e8e8e;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #dbdbdb;
+        border-radius: 4px;
+    }
+
+    .form-group textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+
+    .image-preview {
+        margin-top: 10px;
+        max-height: 200px;
+        overflow: hidden;
+        border-radius: 4px;
+    }
+
+    .image-preview img {
+        max-width: 100%;
+        max-height: 200px;
+        object-fit: contain;
+    }
+
+    .submit-post {
+        background-color: #0095f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        transition: background-color 0.2s;
+    }
+
+    .submit-post:hover {
+        background-color: #0085e0;
+    }
+
+    .submit-post:disabled {
+        background-color: #b2dffc;
+        cursor: not-allowed;
+    }
+
+    /* Comment popup styles */
+    .popup-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .popup-content {
+        background-color: white;
+        width: 90%;
+        max-width: 1000px;
+        height: 90vh;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        border-bottom: 1px solid #dbdbdb;
+    }
+
+    .popup-body {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
+    @media (min-width: 768px) {
+        .popup-body {
+            flex-direction: row;
+        }
+    }
+
+    .popup-image {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #000;
+        overflow: hidden;
+    }
+
+    .popup-image img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .popup-comments {
+        width: 100%;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid #dbdbdb;
+    }
+
+    .comments-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .comment-form {
+        border-top: 1px solid #dbdbdb;
+        padding: 10px;
+        display: flex;
+    }
+
+    .comment-input {
+        flex-grow: 1;
+        border: none;
+        padding: 10px;
+        resize: none;
+    }
+
+    .comment-input:focus {
+        outline: none;
+    }
+
+    .post-button {
+        background: none;
+        border: none;
+        color: #0095f6;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .post-button:disabled {
+        color: #b2dffc;
+        cursor: not-allowed;
+    }
+
+    .loading-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #0095f6;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .no-posts-message {
+        text-align: center;
+        padding: 40px;
+        color: #8e8e8e;
+    }
+
+    /* Media queries for responsive design */
+    @media (min-width: 768px) {
+        .profile-header {
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        .profile-image {
+            margin-right: 30px;
+            margin-bottom: 0;
+        }
+
+        .profile-info {
+            text-align: left;
+        }
+
+        .counters {
+            justify-content: flex-start;
+        }
+
+        .counter {
+            margin-right: 40px;
+        }
+
+        .posts-grid {
+            gap: 28px;
+        }
+    }
+</style>
+<div>
+
+    <body>
+        <div class="container">
+            <header class="profile-header">
+                <div class="profile-image">
+                    <img id="profile-img" src="https://source.unsplash.com/random/150x150/?portrait"
+                        alt="Profile Image">
+                </div>
+                <div class="profile-info">
+                    <h1 class="username" id="username">@username</h1>
+                    <h2 class="full-name" id="full-name">Nancy Reddy </h2>
+                    <p class="bio" id="bio">Bio</p>
+                    <div class="counters">
+                        <a href="#" class="counter">
+                            <span class="count" id="posts-count">0</span>
+                            <span class="label">Posts</span>
+                        </a>
+                        <a href="/followers" class="counter">
+                            <span class="count" id="followers-count">0</span>
+                            <span class="label">Followers</span>
+                        </a>
+                        <a href="/following" class="counter">
+                            <span class="count" id="following-count">0</span>
+                            <span class="label">Following</span>
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="actions">
+                <button id="create-post-btn" class="create-post-btn">Create New Post</button>
+            </div>
+
+            <main class="posts-container">
+                <div id="status-spinner" class="loading-indicator">
+                    <div class="spinner"></div>
+                </div>
+                <div id="no-posts-message" class="no-posts-message hidden">
+                    No posts yet. Create your first post!
+                </div>
+                <div class="posts-grid" id="posts-grid">
+                </div>
+            </main>
+
+            <div class="modal" id="post-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Create New Post</h3>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="new-post-form">
+                            <div class="form-group">
+                                <label for="post-image">Upload Image (PNG or JPG only)</label>
+                                <input type="file" id="post-image" accept=".png, .jpg, .jpeg" required>
+                                <div class="image-preview" id="image-preview"></div>
+                            </div>
+                            <div class="form-group" style="color:black">
+                                <label for="post-caption">Caption</label>
+                                <textarea id="post-caption" placeholder="Write a caption..." required></textarea>
+                            </div>
+                            <button type="submit" class="submit-post">Share Post</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="popup-backdrop hidden" id="popup-backdrop">
+                <div class="popup-content">
+                    <div class="popup-header">
+                        <h3>Post</h3>
+                        <button class="close-popup" id="close-popup">&times;</button>
+                    </div>
+                    <div class="popup-body">
+                        <div class="popup-image" id="popup-img-wrapper">
+                        </div>
+                        <div class="popup-comments">
+                            <div class="comments-list" id="comments-list">
+
+                            </div>
+                            <div class="comment-form">
+                                <textarea class="comment-input" id="comment-text-field" placeholder="Add a comment..."
+                                    maxlength="200"></textarea>
+                                <span id="text-limit-counter" class="text-xs text-gray-500">0/200</span>
+                                <button class="post-button" id="post-comment-btn">Post</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        <script>
+            let userDetails = null;
+            let userEmail = null;
+            let activePostId = null;
+            const commentsDatabase = new Map();
+            const postsGrid = document.getElementById('posts-grid');
+            const postModal = document.getElementById('post-modal');
+            const createPostBtn = document.getElementById('create-post-btn');
+            const closeModalBtn = document.querySelector('.close-modal');
+            const newPostForm = document.getElementById('new-post-form');
+            const postImageInput = document.getElementById('post-image');
+            const imagePreview = document.getElementById('image-preview');
+            const postCaptionInput = document.getElementById('post-caption');
+            const popupBackdrop = document.getElementById('popup-backdrop');
+            const closePopupBtn = document.getElementById('close-popup');
+            const popupImgWrapper = document.getElementById('popup-img-wrapper');
+            const commentsList = document.getElementById('comments-list');
+            const commentTextField = document.getElementById('comment-text-field');
+            const textLimitCounter = document.getElementById('text-limit-counter');
+            const postCommentBtn = document.getElementById('post-comment-btn');
+            const noPostsMessage = document.getElementById('no-posts-message');
+            const postsCount = document.getElementById('posts-count');
+            const followersCount = document.getElementById('followers-count');
+            const followingCount = document.getElementById('following-count');
+
+            function parseJWT(jwtToken) {
+                try {
+                    const base64Payload = jwtToken.split('.')[1];
+                    return JSON.parse(atob(base64Payload));
+                } catch (err) {
+                    console.error('Error parsing JWT:', err);
+                    return {};
+                }
+            }
+
+            function extractTokenFromCookies(cookies) {
+                return cookies
+                    .split(';')
+                    .map(cookie => cookie.trim().split('='))
+                    .find(([key]) => key === 'token')?.[1] || "";
+            }
+
+            async function initApp() {
+                const authToken = extractTokenFromCookies(document.cookie);
+                if (!authToken) {
+                    window.location.href = "/";
+                    return;
+                }
+
+                const tokenData = parseJWT(authToken);
+                userEmail = tokenData.email || tokenData.sub || '';
+
+                if (!userEmail) {
+                    console.error('No user email found in token');
+                    window.location.href = "/";
+                    return;
+                }
+
+                await fetchUserDetails();
+
+                await fetchPosts();
+
+                setupEventListeners();
+            }
+
+            async function fetchUserDetails() {
+                try {
+                    console.log("userEmail ", userEmail)
+                    const userDetailsResponse = await fetch("/getUser", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ Username: userEmail })
+                    });
+
+                    if (userDetailsResponse.status === 200) {
+                        const userDetailsJson = await userDetailsResponse.json();
+                        userDetails = userDetailsJson.user;
+                        updateProfileUI();
+                    } else {
+                        console.error('Failed to fetch user details');
+                    }
+                } catch (error) {
+                    console.error('Error fetching user details:', error);
+                }
+            }
+
+            function updateProfileUI() {
+                if (!userDetails) return;
+
+                document.getElementById('username').textContent = `@${userDetails.Username || ''}`;
+
+                document.getElementById('full-name').textContent = userDetails.full_name || '';
+
+                document.getElementById('bio').textContent = userDetails.bio || 'No bio available';
+
+                const followersListLength = userDetails.followers ? userDetails.followers.length : 0;
+                document.getElementById('followers-count').textContent = followersListLength;
+
+                const followingListLength = userDetails.following ? userDetails.following.length : 0;
+                document.getElementById('following-count').textContent = followingListLength;
+
+                if (userDetails.profile_image) {
+                    document.getElementById('profile-img').src = userDetails.profile_image;
+                }
+                else {
+                    document.getElementById('profile-img').src = "https://thumbs.dreamstime.com/b/default-avatar-profile-image-vector-social-media-user-icon-potrait-182347582.jpg";
+                }
+            }
+
+            async function fetchPosts() {
+                try {
+                    var posts = [];
+                    document.getElementById('status-spinner').classList.remove('hidden');
+                    const postResponse = await fetch("/fetchUserPosts", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ Username: userEmail })
+                    });
+
+
+                    if (postResponse.status === 200) {
+                        const postsJson = await postResponse.json();
+                        posts = postsJson.posts;
+                        posts.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+                        console.log("posrs ", posts)
+                        postsCount.textContent = posts.length;
+                    }
+
+                    if (posts?.length === 0) {
+                        noPostsMessage.classList.remove('hidden');
+                        document.getElementById('status-spinner').classList.add('hidden');
+                        return;
+                    }
+
+                    loadGalleryImages(posts);
+
+                } catch (error) {
+                    console.error('Error fetching posts:', error);
+                    document.getElementById('status-spinner').classList.add('hidden');
+                    noPostsMessage.classList.remove('hidden');
+                }
+            }
+
+            async function loadGalleryImages(posts) {
+                console.log("posts ", posts)
+                const imageElements = await Promise.all(posts.map(async (post, index) => {
+                    const formData = new FormData();
+                    formData.append('filename', post.filename);
+                    console.log("post ", post);
+
+                    try {
+                        const response = await fetch('/download-file', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            console.error('Failed to download image for post', post.filename);
+                            return `<div class="aspect-square bg-gray-200 flex items-center justify-center text-red-500">Error loading image</div>`;
+                        }
+
+                        const blob = await response.blob();
+                        const imageUrl = URL.createObjectURL(blob);
+
+                        const postId = post.post_id || post.filename || `post-${index}`;
+
+                        if (!commentsDatabase.has(postId)) {
+                            commentsDatabase.set(postId, post.comments || []);
+                        }
+
+                        return `
+                            <div class="post-card" 
+                                data-post-id="${postId}" 
+                                data-image-url="${imageUrl}"
+                                onclick="showCommentPopup('${postId}', '${imageUrl}')">
+                                <img src="${imageUrl}" alt="Post" class="post-image">
+                                <div class="post-caption">
+                                    <p>${post.description || ''}</p>
+                                </div>
+                            </div>
+                        `;
+                    } catch (error) {
+                        console.error('Error loading image:', error);
+                        return `<div class="aspect-square bg-gray-200 flex items-center justify-center text-red-500">Error loading image</div>`;
+                    }
+                }));
+
+                postsGrid.innerHTML = imageElements.join('');
+                document.getElementById('status-spinner').classList.add('hidden');
+            }
+
+
+            function showCommentPopup(postId, imageUrl) {
+                activePostId = postId;
+
+                popupImgWrapper.innerHTML = `<img src="${imageUrl}" alt="Post" class="w-full h-full object-contain">`;
+
+                console.log("post id in comments ", postId);
+                displayComments(postId);
+
+                popupBackdrop.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+
+            function displayComments(postId) {
+                commentsList.innerHTML = '';
+
+                if (!commentsDatabase.has(postId)) {
+                    commentsList.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>';
+                    return;
+                }
+
+                const comments = commentsDatabase.get(postId);
+
+                if (comments.length === 0) {
+                    commentsList.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>';
+                    return;
+                }
+
+                comments.sort((a, b) => new Date(b.time) - new Date(a.time));
+                comments.forEach(comment => {
+                    const commentElement = document.createElement('div');
+                    commentElement.className = 'bg-gray-50 p-3 rounded-lg mb-3';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-center mb-2';
+
+                    const username = document.createElement('span');
+                    username.className = 'font-medium text-blue-600';
+                    username.textContent = comment.username;
+
+                    const time = document.createElement('span');
+                    time.className = 'text-xs text-gray-500';
+                    time.textContent = formatTimeAgo(comment.time);
+
+                    header.appendChild(username);
+                    header.appendChild(time);
+
+                    const text = document.createElement('p');
+                    text.className = 'text-gray-700';
+                    text.textContent = comment.comment;
+
+                    commentElement.appendChild(header);
+                    commentElement.appendChild(text);
+
+                    commentsList.appendChild(commentElement);
+                });
+            }
+
+            async function submitNewComment() {
+                if (!activePostId) return;
+
+                const commentText = commentTextField.value.trim();
+                const email = userDetails.Username;
+
+                if (commentText) {
+                    const commentTime = new Date();
+                    const newComment = {
+                        email: email,
+                        comment: commentText,
+                        timestamp: commentTime,
+                        activePostId: activePostId
+                    };
+
+                    const newCommentResponse = await fetch("/addCommentToPost", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ comment: newComment })
+                    });
+
+                    if (!commentsDatabase.has(activePostId)) {
+                        commentsDatabase.set(activePostId, []);
+                    }
+
+                    const updatedComment = {
+                        username: email,
+                        comment: commentText,
+                        time: commentTime,
+                        activePostId: activePostId
+                    };
+
+                    const comments = commentsDatabase.get(activePostId);
+                    comments.unshift(updatedComment);
+
+                    displayComments(activePostId);
+
+                    commentTextField.value = '';
+                    textLimitCounter.textContent = '0/200';
+                }
+            }
+
+            function formatTimeAgo(date) {
+                const now = new Date();
+                const dateObj = new Date(date);
+                const diffMs = now - dateObj;
+                const diffSec = Math.floor(diffMs / 1000);
+                const diffMin = Math.floor(diffSec / 60);
+                const diffHour = Math.floor(diffMin / 60);
+                const diffDay = Math.floor(diffHour / 24);
+
+                if (diffSec < 60) {
+                    return 'just now';
+                } else if (diffMin < 60) {
+                    return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
+                } else if (diffHour < 24) {
+                    return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+                } else if (diffDay < 7) {
+                    return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+                } else {
+                    return dateObj.toLocaleDateString();
+                }
+            }
+
+            async function createNewPost(file, caption) {
+                console.log("file i s ", file)
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('file_name', file.name);
+                formData.append('caption', caption);
+                formData.append('username', userDetails.Username);
+                formData.append('email', userEmail);
+
+                try {
+                    const response = await fetch('/create-post', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+
+                        await fetchPosts();
+                        return true;
+                    } else {
+                        console.error('Failed to create post');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Error creating post:', error);
+                    return false;
+                }
+            }
+
+            function setupEventListeners() {
+                createPostBtn.addEventListener('click', () => {
+                    postModal.style.display = 'block';
+                    document.body.style.overflow = 'hidden';
+                });
+
+                closeModalBtn.addEventListener('click', () => {
+                    postModal.style.display = 'none';
+                    document.body.style.overflow = '';
+                    newPostForm.reset();
+                    imagePreview.innerHTML = '';
+                });
+                window.addEventListener('click', (event) => {
+                    if (event.target === postModal) {
+                        postModal.style.display = 'none';
+                        document.body.style.overflow = '';
+                        newPostForm.reset();
+                        imagePreview.innerHTML = '';
+                    }
+                });
+
+                postImageInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+
+                    if (file) {
+                        const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+                        if (!validTypes.includes(file.type)) {
+                            alert('Please select a PNG or JPG image file.');
+                            postImageInput.value = '';
+                            imagePreview.innerHTML = '';
+                            return;
+                        }
+
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        imagePreview.innerHTML = '';
+                    }
+                });
+
+                function handleImageUpload(e) {
+                    file = e.target.files[0];
+                    if (!file) return;
+
+                    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                        alert('Please select a JPG or PNG image.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        imagePreview.src = event.target.result;
+                        imagePreview.classList.remove('hidden');
+                        uploadContainer.classList.add('hidden');
+                        submitBtn.disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                }
+
+                newPostForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+
+                    const file = postImageInput.files[0];
+                    const caption = postCaptionInput.value;
+
+                    if (!file || !caption) {
+                        alert('Please upload an image and write a caption.');
+                        return;
+                    }
+
+                    const success = await createNewPost(file, caption);
+
+                    if (success) {
+                        postModal.style.display = 'none';
+                        document.body.style.overflow = '';
+                        newPostForm.reset();
+                        imagePreview.innerHTML = '';
+                    }
+                });
+
+                closePopupBtn.addEventListener('click', () => {
+                    popupBackdrop.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                    activePostId = null;
+                });
+
+                commentTextField.addEventListener('input', () => {
+                    const length = commentTextField.value.length;
+                    textLimitCounter.textContent = `${length}/200`;
+                });
+
+                postCommentBtn.addEventListener('click', submitNewComment);
+
+                document.addEventListener('click', (event) => {
+                    const postCard = event.target.closest('.post-card');
+                    if (postCard) {
+                        const postId = postCard.dataset.postId;
+                        const imageUrl = postCard.dataset.imageUrl;
+                        showCommentPopup(postId, imageUrl);
+                    }
+                });
+
+
+            }
+
+            window.showCommentPopup = showCommentPopup;
+
+            document.addEventListener('DOMContentLoaded', initApp);
+        </script>
+    </body>
+</div>
+{% endblock %}

@@ -81,6 +81,43 @@ def getuserfromemail(email):
         user_data = user_ref[0].to_dict()
         return user_data
 
+
+def createPost(filename, user, postdescription):
+    post_id = str(uuid.uuid4()) 
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+    database.collection('Post').add({
+                "post_id": post_id,
+                "Username": user['Username'],  
+                "email":user['email'],        
+                "Date": current_time,            
+                "filename": filename,
+                "likes": 0,
+                "description": postdescription,
+                "comments":[]
+            })
+    print("added to the database")
+
+def addFile(file , user , postdescription):
+    print("inside add file")
+    storage_client = storage.Client(project=local_constants.PROJECT_NAME)
+    bucket = storage_client.bucket(local_constants.PROJECT_STORAGE_BUCKET)
+    blob = storage.Blob(file.filename, bucket)
+    blob.upload_from_file(file.file)
+    createPost(file.filename,user, postdescription)
+
+def blobList(prefix):
+    print("local_constants.PROJECT_NAME ",local_constants.PROJECT_NAME)
+    storage_client = storage.Client(project=local_constants.PROJECT_NAME)
+    return storage_client.list_blobs(local_constants.PROJECT_STORAGE_BUCKET, prefix=prefix)
+
+def downloadBlob(filename):
+    storage_client = storage.Client(project=local_constants.PROJECT_NAME)
+    bucket = storage_client.bucket(local_constants.PROJECT_STORAGE_BUCKET)
+    blob = bucket.get_blob(filename)
+    return blob.download_as_bytes()
+
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     id_token = request.cookies.get('token')
