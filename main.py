@@ -366,3 +366,86 @@ async def addCommentToPost(request: Request):
     })
 
     return {"message": "Comment added successfully", "new_comment": new_comment}
+
+
+
+
+@app.post("/commentAPost")
+async def add_comment_to_post(payload: CommentPayload):
+    comment_data = payload.comment
+    doc_id = comment_data["activePostId"] 
+    user_email = comment_data["email"]
+    username = comment_data["username"]
+    comment_text = comment_data["comment"]
+    timestamp = comment_data["timestamp"]
+    
+    print("Firestore Document ID is:", doc_id)
+
+    post_ref = database.collection("Post").document(doc_id)
+    post_snapshot = post_ref.get()
+
+    if not post_snapshot.exists:
+        print("Post not found")
+        return {"success": False, "message": "Post not found."}
+
+    new_comment = {
+        "username": username,
+        "comment": comment_text,
+        "time": timestamp
+    }
+
+    print("Adding new comment:", new_comment)
+
+    post_ref.update({
+        "comments": firestore.ArrayUnion([new_comment])
+    })
+
+    return {"success": True, "message": "Comment added successfully."}
+
+
+@app.post("/followuser")
+async def follow_user(data: FollowerInfo):
+    current_username = data.mainUser
+    friend_username = data.secondUser
+    currentuserprofilename = data.profilenameofuser
+    friendprofilename = data.profilenameoffriend
+
+    user_docs = database.collection('User').where('Username', '==', current_username).limit(1).get()
+    friend_docs = database.collection('User').where('Username', '==', friend_username).limit(1).get()
+
+    if not user_docs or not friend_docs:
+        raise HTTPException(status_code=404, detail="User or friend not found")
+
+    user_ref = user_docs[0].reference
+    friend_ref = friend_docs[0].reference
+
+    user_data = user_docs[0].to_dict()
+    friend_data = friend_docs[0].to_dict()
+    if 'following' not in user_data:
+        user_ref.update({'following': []})
+        user_data['following'] = []
+    if 'followers' not in friend_data:
+        friend_ref.update({'followers': []})
+        friend_data['followers'] = []
+
+    if not any(f.get('username') == friend_username for f in user_data.get('following', [])):
+        user_ref.update({
+            "following": firestore.ArrayUnion([{
+                "username": friend_username,
+                "profileName": friendprofilename,
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }])
+        })
+
+    if not any(f.get('username') == current_username for f in friend_data.get('followers', [])):
+        friend_ref.update({
+            "followers": firestore.ArrayUnion([{
+                "username": current_username,
+                "profileName": currentuserprofilename,
+                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }])
+        })
+
+    return {"message": f"{current_username} followed {friend_username}"}
+
+
