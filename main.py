@@ -264,3 +264,105 @@ async def modify_user_credentials(payload: RegistrationRequest, response_class=J
     })
 
     return JSONResponse(content={"message": "User profile updated successfully"}, status_code=200)
+
+
+
+@app.get("/getusersfromAPI")
+async def get_all_users():
+    users = fetch_all_users()
+    return {"users": users}
+
+
+
+@app.post("/create-post")
+async def create_post(
+    file: UploadFile = File(...),
+    caption: str = Form(...),
+    file_name: str = Form(...),
+    username: str = Form(...),
+    email: str = Form(...)
+):
+    
+    print("file is ",username,file)
+   
+    user = {
+        "Username": username,
+        "email": email 
+    }
+
+    filename = file.filename
+    print("file name ",filename, " user ",user)
+
+    addFile(file,user,caption)
+
+    return {"message": "Post created successfully"}
+
+@app.post("/add-directory", response_class=RedirectResponse)
+async def addDirectoryHandler(request: Request):
+    id_token = request.cookies.get("token")
+    user_token= validateFirebaseToken(id_token)
+    if not user_token:
+      return RedirectResponse('/')
+    form = await request.form()
+    dir_name = form['dir_name']
+    if dir_name == '' or dir_name[-1] != '/':
+        return RedirectResponse('/')
+    addDirectory(dir_name)
+    return RedirectResponse('/', status_code=status.HTTP_302_FOUND)
+
+@app.post("/download-file", response_class=Response)
+async def downloadFileHandler(request: Request):
+    
+    id_token= request.cookies.get("token")
+    user_token = validateFirebaseToken(id_token)
+    if not user_token:
+        return RedirectResponse('/')
+  
+    form = await request.form()
+    filename = form['filename']
+    return Response (downloadBlob(filename))
+
+
+
+@app.post("/addCommentToPost", response_class=JSONResponse)
+async def addCommentToPost(request: Request):
+    data = await request.json() 
+    print("data in api ",data)
+    new_comment_data = data.get("comment")
+    print("Received comment:", new_comment_data) 
+    if not new_comment_data:
+        return JSONResponse(content={"error": "No comment provided"}, status_code=400)
+
+    post_id = new_comment_data.get("activePostId")
+    if not post_id:
+        return JSONResponse(content={"error": "No post ID provided"}, status_code=400)
+    print("new_comment_data ",new_comment_data ,post_id )
+    posts_ref = database.collection("Post")
+    query = posts_ref.where("post_id", "==", post_id).limit(1)
+    results = query.stream()
+    print("active post id ",post_id, results)
+    post_doc = None
+    post_doc_id = None
+    for doc in results:
+        post_doc = doc.to_dict()
+        post_doc_id = doc.id
+        break
+    print("post doc ",post_doc)
+    if not post_doc:
+        return JSONResponse(content={"error": "Post not found"}, status_code=404)
+
+    new_comment = {
+        "username": new_comment_data["email"],
+        "comment": new_comment_data["comment"],
+        "time": new_comment_data["timestamp"],
+    }
+    print("new comment ",new_comment)
+    comments = post_doc.get("comments", [])
+    comments.append(new_comment)
+
+    post_ref = database.collection("Post").document(post_doc_id)
+    post_ref.update({
+        "comments": comments
+    })
+
+    return {"message": "Comment added successfully", "new_comment": new_comment}

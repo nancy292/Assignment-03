@@ -2,7 +2,6 @@
 
 {% block content %}
 <style>
-    /* Reset and base styles */
     * {
         margin: 0;
         padding: 0;
@@ -405,7 +404,6 @@
         color: #8e8e8e;
     }
 
-    /* Media queries for responsive design */
     @media (min-width: 768px) {
         .profile-header {
             flex-direction: row;
@@ -446,53 +444,80 @@
                         alt="Profile Image">
                 </div>
                 <div class="profile-info">
-                    <h1 class="username" id="username">@username</h1>
-                    <h2 class="full-name" id="full-name">Nancy Reddy </h2>
-                    <p class="bio" id="bio">Bio</p>
+                    <div class="" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h1 class="username" id="username">@username</h1>
+                            <h2 class="full-name" id="full-name">Nancy Reddy </h2>
+                            <p class="bio" id="bio">Bio</p>
+                        </div>
+                        <div>
+                            <button id="followButton" class="hidden" onclick="togglefollowstatus()">Follow</button>
+                        </div>
+                    </div>
                     <div class="counters">
                         <a href="#" class="counter">
                             <span class="count" id="posts-count">0</span>
                             <span class="label">Posts</span>
                         </a>
-                        <a href="/followers" class="counter">
+                        <p class="counter">
                             <span class="count" id="followers-count">0</span>
                             <span class="label">Followers</span>
-                        </a>
-                        <a href="/following" class="counter">
+                        </p>
+                        <p class="counter">
                             <span class="count" id="following-count">0</span>
                             <span class="label">Following</span>
-                        </a>
+                        </p>
                     </div>
                 </div>
             </header>
 
-            <div class="actions">
-                <button id="create-post-btn" class="create-post-btn">Create New Post</button>
-            </div>
 
             <main class="posts-container">
                 <div id="status-spinner" class="loading-indicator">
                     <div class="spinner"></div>
                 </div>
                 <div id="no-posts-message" class="no-posts-message hidden">
-                    No posts yet. Create your first post!
+                    No posts yet.
                 </div>
                 <div class="posts-grid" id="posts-grid">
                 </div>
             </main>
 
+
+            <div class="popup-backdrop hidden" id="popup-backdrop">
+                <div class="popup-content">
+                    <div class="popup-header">
+                        <h3>Post</h3>
+                        <button class="close-popup" id="close-popup">&times;</button>
+                    </div>
+                    <div class="popup-body">
+                        <div class="popup-image" id="popup-img-wrapper">
+                        </div>
+                        <div class="popup-comments">
+                            <div class="comments-list" id="comments-list">
+                            </div>
+                            <div class="comment-form">
+                                <textarea class="comment-input" id="comment-text-field" placeholder="Add a comment..."
+                                    maxlength="200"></textarea>
+                                <span id="text-limit-counter" class="text-xs text-gray-500">0/200</span>
+                                <button class="post-button" id="post-comment-btn">Post</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script>
             let userDetails = null;
             let userEmail = null;
             let activePostId = null;
+            let friendDetails = null;
+            const usernameOfPeople = "{{ username }}";
+
             const commentsDatabase = new Map();
             const postsGrid = document.getElementById('posts-grid');
-            const postModal = document.getElementById('post-modal');
-            const createPostBtn = document.getElementById('create-post-btn');
             const closeModalBtn = document.querySelector('.close-modal');
-            const newPostForm = document.getElementById('new-post-form');
             const postImageInput = document.getElementById('post-image');
             const imagePreview = document.getElementById('image-preview');
             const postCaptionInput = document.getElementById('post-caption');
@@ -507,6 +532,7 @@
             const postsCount = document.getElementById('posts-count');
             const followersCount = document.getElementById('followers-count');
             const followingCount = document.getElementById('following-count');
+            const followButton = document.getElementById('followButton');
 
             function parseJWT(jwtToken) {
                 try {
@@ -558,11 +584,22 @@
                         },
                         body: JSON.stringify({ Username: userEmail })
                     });
+                    console.log("user email  ", userEmail, " user name ", usernameOfPeople)
+                    const peopleDetailsResponse = await fetch("/getUserUsingUsername ", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ Username: usernameOfPeople })
+                    });
 
-                    if (userDetailsResponse.status === 200) {
+                    if (peopleDetailsResponse.status === 200) {
                         const userDetailsJson = await userDetailsResponse.json();
+                        const peopleDetailsJson = await peopleDetailsResponse.json();
                         userDetails = userDetailsJson.user;
+                        friendDetails = peopleDetailsJson.user;
                         updateProfileUI();
+
                     } else {
                         console.error('Failed to fetch user details');
                     }
@@ -571,23 +608,69 @@
                 }
             }
 
+
+
+            function doesUserFollow(user1, user2) {
+                return user1.following.some(followingEntry => followingEntry.username === user2.Username);
+            }
+
+            async function togglefollowstatus() {
+                const updateUsers = {
+                    mainUser: userDetails.Username,
+                    secondUser: friendDetails.Username,
+                    profilenameofuser: userDetails.full_name,
+                    profilenameoffriend: friendDetails.full_name
+                };
+
+
+                if (doesUserFollow(userDetails, friendDetails)) {
+                    console.log("remove follower")
+                    const userfollowresponse = await fetch("/unfollowuser", { method: "POST", "headers": { 'content-type': 'application/json' }, body: JSON.stringify(updateUsers) })
+                    if (userfollowresponse.ok) {
+                        document.getElementById('followButton').textContent = 'Follow'
+                        fetchUserDetails()
+                    }
+                }
+                else {
+                    console.log("inside add follower ", updateUsers)
+                    const userfollowresponse = await fetch(
+                        "/followuser",
+                        {
+                            method: "POST", "headers": { 'content-type': 'application/json' },
+                            body: JSON.stringify(updateUsers)
+                        })
+                    if (userfollowresponse.ok) {
+                        document.getElementById('followButton').textContent = 'Unfollow'
+                        fetchUserDetails()
+                    }
+                }
+            }
+
             function updateProfileUI() {
-                if (!userDetails) return;
+                if (!friendDetails) return;
+                console.log("fiend ", friendDetails)
 
-                document.getElementById('username').textContent = `@${userDetails.Username || ''}`;
+                document.getElementById('username').textContent = `@${friendDetails.Username || ''}`;
 
-                document.getElementById('full-name').textContent = userDetails.full_name || '';
+                document.getElementById('full-name').textContent = friendDetails.full_name || '';
 
-                document.getElementById('bio').textContent = userDetails.bio || 'No bio available';
+                document.getElementById('bio').textContent = friendDetails.bio || 'No bio available';
 
-                const followersListLength = userDetails.followers ? userDetails.followers.length : 0;
+                const followersListLength = friendDetails.followers ? friendDetails.followers.length : 0;
                 document.getElementById('followers-count').textContent = followersListLength;
 
-                const followingListLength = userDetails.following ? userDetails.following.length : 0;
+                const followingListLength = friendDetails.following ? friendDetails.following.length : 0;
                 document.getElementById('following-count').textContent = followingListLength;
 
-                if (userDetails.profile_image) {
-                    document.getElementById('profile-img').src = userDetails.profile_image;
+                const followStatus = doesUserFollow(userDetails, friendDetails)
+                if (followStatus) {
+                    document.getElementById('followButton').textContent = 'Unfollow'
+                }
+                if (userDetails.Username != friendDetails.Username) {
+                    document.getElementById('followButton').classList.remove('hidden')
+                }
+                if (friendDetails.profile_image) {
+                    document.getElementById('profile-img').src = friendDetails.profile_image;
                 }
                 else {
                     document.getElementById('profile-img').src = "https://thumbs.dreamstime.com/b/default-avatar-profile-image-vector-social-media-user-icon-potrait-182347582.jpg";
@@ -596,6 +679,7 @@
 
             async function fetchPosts() {
                 try {
+                    console.log("inside fetch ", friendDetails)
                     var posts = [];
                     document.getElementById('status-spinner').classList.remove('hidden');
                     const postResponse = await fetch("/fetchUserPosts", {
@@ -603,15 +687,14 @@
                         headers: {
                             "Content-Type": "application/json",
                         },
-                        body: JSON.stringify({ Username: userEmail })
+                        body: JSON.stringify({ Username: friendDetails.email })
                     });
-
-
+                    console.log("after posts")
                     if (postResponse.status === 200) {
                         const postsJson = await postResponse.json();
                         posts = postsJson.posts;
+                        console.log("posts inside if ", posts)
                         posts.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-                        console.log("posrs ", posts)
                         postsCount.textContent = posts.length;
                     }
 
@@ -620,7 +703,7 @@
                         document.getElementById('status-spinner').classList.add('hidden');
                         return;
                     }
-
+                    console.log("posts are ", posts)
                     loadGalleryImages(posts);
 
                 } catch (error) {
@@ -679,7 +762,6 @@
                 document.getElementById('status-spinner').classList.add('hidden');
             }
 
-
             function showCommentPopup(postId, imageUrl) {
                 activePostId = postId;
 
@@ -713,7 +795,7 @@
                     commentElement.className = 'bg-gray-50 p-3 rounded-lg mb-3';
 
                     const header = document.createElement('div');
-                    header.className = 'flex justify-between items-center mb-2';
+                    header.className = 'flex justify-between  items-center mb-2';
 
                     const username = document.createElement('span');
                     username.className = 'font-medium text-blue-600';
@@ -833,87 +915,6 @@
             }
 
             function setupEventListeners() {
-                createPostBtn.addEventListener('click', () => {
-                    postModal.style.display = 'block';
-                    document.body.style.overflow = 'hidden';
-                });
-
-                closeModalBtn.addEventListener('click', () => {
-                    postModal.style.display = 'none';
-                    document.body.style.overflow = '';
-                    newPostForm.reset();
-                    imagePreview.innerHTML = '';
-                });
-                window.addEventListener('click', (event) => {
-                    if (event.target === postModal) {
-                        postModal.style.display = 'none';
-                        document.body.style.overflow = '';
-                        newPostForm.reset();
-                        imagePreview.innerHTML = '';
-                    }
-                });
-
-                postImageInput.addEventListener('change', (event) => {
-                    const file = event.target.files[0];
-
-                    if (file) {
-                        const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-                        if (!validTypes.includes(file.type)) {
-                            alert('Please select a PNG or JPG image file.');
-                            postImageInput.value = '';
-                            imagePreview.innerHTML = '';
-                            return;
-                        }
-
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            imagePreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-                        };
-                        reader.readAsDataURL(file);
-                    } else {
-                        imagePreview.innerHTML = '';
-                    }
-                });
-
-                function handleImageUpload(e) {
-                    file = e.target.files[0];
-                    if (!file) return;
-
-                    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-                        alert('Please select a JPG or PNG image.');
-                        return;
-                    }
-
-                    const reader = new FileReader();
-                    reader.onload = function (event) {
-                        imagePreview.src = event.target.result;
-                        imagePreview.classList.remove('hidden');
-                        uploadContainer.classList.add('hidden');
-                        submitBtn.disabled = false;
-                    };
-                    reader.readAsDataURL(file);
-                }
-
-                newPostForm.addEventListener('submit', async (event) => {
-                    event.preventDefault();
-
-                    const file = postImageInput.files[0];
-                    const caption = postCaptionInput.value;
-
-                    if (!file || !caption) {
-                        alert('Please upload an image and write a caption.');
-                        return;
-                    }
-
-                    const success = await createNewPost(file, caption);
-
-                    if (success) {
-                        postModal.style.display = 'none';
-                        document.body.style.overflow = '';
-                        newPostForm.reset();
-                        imagePreview.innerHTML = '';
-                    }
-                });
 
                 closePopupBtn.addEventListener('click', () => {
                     popupBackdrop.classList.add('hidden');
@@ -936,8 +937,6 @@
                         showCommentPopup(postId, imageUrl);
                     }
                 });
-
-
             }
 
             window.showCommentPopup = showCommentPopup;
