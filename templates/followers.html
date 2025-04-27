@@ -1,0 +1,176 @@
+{% extends "index.html" %}
+
+{% block content %}
+<style>
+    body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .connection-card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+
+
+<body class="bg-slate-100">
+    <div class="container mx-auto px-4 py-6 max-w-2xl">
+
+        <header class="mb-6">
+            <h1 class="text-2xl font-bold text-slate-800">Your followers</h1>
+
+        </header>
+
+
+        <div class="flex justify-between items-center mb-4 px-1">
+            <p class="text-sm font-medium text-slate-600" id="people-count">Loading...</p>
+        </div>
+
+        <div id="people-list" class="space-y-3">
+            <div class="flex justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+
+        let userDetails = null;
+        let userEmail = null;
+        document.addEventListener("DOMContentLoaded", () => {
+            const peopleList = document.getElementById("people-list");
+            const peopleCount = document.getElementById("people-count");
+
+            let allPeople = [];
+
+
+            function parseJWT(jwtToken) {
+                try {
+                    const base64Payload = jwtToken.split('.')[1];
+                    return JSON.parse(atob(base64Payload));
+                } catch (err) {
+                    console.error('Error parsing JWT:', err);
+                    return {};
+                }
+            }
+
+            function extractTokenFromCookies(cookies) {
+                return cookies
+                    .split(';')
+                    .map(cookie => cookie.trim().split('='))
+                    .find(([key]) => key === 'token')?.[1] || "";
+            }
+
+            async function initApp() {
+                const authToken = extractTokenFromCookies(document.cookie);
+                if (!authToken) {
+                    window.location.href = "/";
+                    return;
+                }
+                const tokenData = parseJWT(authToken);
+                userEmail = tokenData.email || tokenData.sub || '';
+                await fetchUserDetails()
+            }
+
+            async function fetchUserDetails() {
+                try {
+                    console.log("userEmail ", userEmail)
+                    const userDetailsResponse = await fetch("/getUser", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ Username: userEmail })
+                    });
+
+                    if (userDetailsResponse.status === 200) {
+                        const userDetailsJson = await userDetailsResponse.json();
+                        userDetails = userDetailsJson.user;
+                        console.log("user derails ", userDetails)
+                        getPeopleData();
+                    } else {
+                        console.error('Failed to fetch user details');
+                    }
+                } catch (error) {
+                    console.error('Error fetching user details:', error);
+                }
+            }
+            async function getPeopleData() {
+                try {
+
+                    allPeople = userDetails.followers;
+                    showPeople(allPeople);
+
+                    peopleCount.textContent = `${allPeople.length} connections`;
+                } catch (error) {
+                    console.error("Error fetching people data:", error);
+                    peopleList.innerHTML = `
+                        <div class="text-center py-8">
+                            <p class="text-red-500">Failed to load connections. Please try again.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            function showPeople(people) {
+                peopleList.innerHTML = "";
+
+                if (people.length === 0) {
+                    peopleList.innerHTML = `
+                        <div class="text-center py-8">
+                            <p class="text-slate-500">No connections found</p>
+                        </div>
+                    `;
+                    return;
+                }
+                people.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+                people.forEach((person) => {
+                    console.log("person ", person)
+                    const personCard = document.createElement("div");
+                    personCard.className = "connection-card bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200";
+
+                    const colors = ["bg-teal-500", "bg-amber-500", "bg-rose-500", "bg-sky-500", "bg-emerald-500"];
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+                    personCard.innerHTML = `
+                        <a class="flex items-center" href="/user/${person.username}">
+                            <div class="h-12 w-12 ${randomColor} rounded-lg flex items-center justify-center text-white font-bold text-xl">
+                                ${person.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="ml-4">
+                                <p class="font-medium text-slate-800">${person.username}</p>
+                                <p class="text-sm text-slate-500">${person.profileName}</p>
+                            </div>
+                           
+                        </a>
+                    `;
+
+                    peopleList.appendChild(personCard);
+                });
+            }
+
+            function searchPeople(query) {
+                if (!query) {
+                    showPeople(allPeople);
+                    return;
+                }
+
+                const filteredPeople = allPeople.filter((person) => {
+                    return (
+                        person.accountName.toLowerCase().includes(query.toLowerCase()) ||
+                        person.fullName.toLowerCase().includes(query.toLowerCase())
+                    );
+                });
+
+                showPeople(filteredPeople);
+            }
+
+
+
+            initApp()
+        });
+    </script>
+</body>
+
+{% endblock %}
