@@ -315,6 +315,139 @@
             }
         }
 
+        async function fetchPosts() {
+            try {
+                const timelinePostsDataResponse = await fetch("/postsofallusers", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ email: userEmail })
+                })
+                posts = await timelinePostsDataResponse.json();
+
+
+
+                if (posts.length === 0) {
+                    console.log("inside posts if");
+                    document.getElementById('nopostsdata').style.display = 'block';
+                }
+
+                console.log("posts in timeline ", posts)
+                renderPosts(posts);
+
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            }
+        }
+
+
+
+
+
+        function renderUserProfile(user) {
+            console.log("user ", user)
+            const userProfileElement = document.getElementById('user-profile');
+            userProfileElement.innerHTML = `
+                <img src="https://img.freepik.com/premium-vector/default-avatar-profile-icon-social-media-user-image-gray-avatar-icon-blank-profile-silhouette-vector-illustration_561158-3407.jpg" alt="${user.Username}">
+                <div class="user-info">
+                    <span class="username">${user.Username}</span>
+                    <span class="name">${user.full_name}</span>
+                </div>
+            `;
+        }
+
+        async function renderPosts(posts) {
+            const feedElement = document.getElementById('feed');
+
+            const sortedPosts = [...posts].sort((a, b) =>
+                new Date(b.timestamp) - new Date(a.timestamp)
+            );
+
+
+
+
+            const postElements = await Promise.all(sortedPosts.map(async (post, index) => {
+                const formData = new FormData();
+                formData.append('filename', post.filename);
+
+                let imageUrl = '';
+                try {
+                    const response = await fetch('/download-file', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        console.error('Failed to fetch image for post', post.filename);
+                        imageUrl = '';
+                    } else {
+                        const blob = await response.blob();
+                        imageUrl = URL.createObjectURL(blob);
+                    }
+                } catch (err) {
+                    console.error('Error loading image:', err);
+                    imageUrl = '';
+                }
+
+                const sortedComments = [...(post.comments || [])].sort((a, b) =>
+                    new Date(b.time) - new Date(a.time)
+                );
+
+                const visibleComments = sortedComments.slice(0, 5);
+                const hiddenComments = sortedComments.slice(5);
+                console.log("hidden comments ", hiddenComments)
+                const visibleCommentsHTML = visibleComments.map(comment => `
+            <div class="comment">
+                <span class="username">${comment.username}</span>
+                <span>${comment.comment}</span>
+            </div>
+        `).join('');
+
+                const hiddenCommentsHTML = hiddenComments.map(comment => `
+            <div class="comment hidden-comment" style="display: none;">
+                <span class="username">${comment.username}</span>
+                <span>${comment.comment}</span>
+            </div>
+        `).join('');
+
+                const showMoreButton = hiddenComments.length > 0
+                    ? `<div class="show-more-comments" data-post-id="${post.post_id}">View all ${post.comments.length} comments</div>`
+                    : '';
+
+                return `
+            <div class="post" id="post-${post.post_id}">
+                <div class="post-header">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIf4R5qPKHPNMyAqV-FjS_OTBB8pfUV29Phg&s" alt="${post.Username}">
+                    <a href="#" class="username">${post.Username}</a>
+                </div>
+                <img src="${imageUrl || ''}" alt="Post image" class="post-image">
+                <div class="post-content">
+                    <div class="post-description">
+                        <span class="username">${post.Username}</span>
+                        <span>${post.description}</span>
+                    </div>
+                    <div class="comments-section" id="comments-${post.post_id}">
+                        ${showMoreButton}
+                        ${visibleCommentsHTML}
+                        ${hiddenCommentsHTML}
+                    </div>
+                </div>
+                <div class="add-comment">
+                    <input type="text" placeholder="Add a comment..." maxlength="200" data-post-id="${post.post_id}">
+                    <span class="char-count">0/200</span>
+                    <button disabled>Post</button>
+                </div>
+            </div>
+        `;
+            }));
+
+            feedElement.innerHTML = postElements.join('');
+            if (sortedPosts.length)
+                addEventListeners();
+        }
+
 
 
         function addEventListeners() {

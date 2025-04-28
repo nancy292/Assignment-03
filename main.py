@@ -483,3 +483,32 @@ async def getUser(data: EmailLookupRequest, response_class=JSONResponse):
         post['Date'] = post['Date'].strftime("%Y-%m-%d %H:%M:%S")
 
     return JSONResponse(content=top_50_posts)
+
+
+@app.get("/printAllPostIds")
+async def print_all_post_ids():
+    posts = database.collection("Post").stream()
+    post_ids = []
+
+    print("All Post IDs in the database:")
+    for doc in posts:
+        data = doc.to_dict()
+        pid = data.get("post_id")
+        if pid:
+            post_ids.append(pid)
+            print(pid)
+
+    return {"success": True, "post_ids": post_ids}
+
+
+@app.get("/printAllDocumentIds")
+async def print_all_document_ids():
+    posts = database.collection("Post").stream()
+    document_ids = []
+
+    print("All Firestore Document IDs in the 'Post' collection:")
+    for doc in posts:
+        document_ids.append(doc.id)
+        print(doc.id)
+
+    return {"success": True, "document_ids": document_ids}
