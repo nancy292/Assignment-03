@@ -8,12 +8,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBMoMIJMqCIJZDgxEDpUShZCS2o1Ew_nxs",
-  authDomain: "assignment---1-1e153.firebaseapp.com",
-  projectId: "assignment---1-1e153",
-  storageBucket: "assignment---1-1e153.appspot.com",
-  messagingSenderId: "133737118405",
-  appId: "1:133737118405:web:244db60467492f4f10ceac",
+  apiKey: "AIzaSyCFpdiPZUZMZ28O87FxeBZKTU9QxDxALIg",
+  authDomain: "assignment3-3d41a.firebaseapp.com",
+  projectId: "assignment3-3d41a",
+  storageBucket: "assignment3-3d41a.firebasestorage.app",
+  messagingSenderId: "191609676404",
+  appId: "1:191609676404:web:23b8caa7eef325b91f2721",
+  measurementId: "G-0DX890M3H5",
 };
 window.addEventListener("load", function () {
   const app = initializeApp(firebaseConfig);

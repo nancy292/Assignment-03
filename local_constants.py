@@ -1,2 +1,2 @@
-PROJECT_NAME="assignment-1-454115"
-PROJECT_STORAGE_BUCKET="assignment-1-454115.appspot.com"
+PROJECT_NAME="assignment3-3d41a"
+PROJECT_STORAGE_BUCKET="assignment3-3d41a.appspot.com"
